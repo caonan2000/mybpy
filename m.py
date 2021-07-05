@@ -1,4 +1,4 @@
-#--------mybpy (ver:1.01)-----2021.6.13 edit----by:caonan (mail: caonan2000@163.com)
+#--------mybpy (ver:1.04)-----2021.7.4 publish----by:caonan (mail: caonan2000@163.com)
 
 #if you want use mybpy,please paste the following tow lines to blender py console or script head
 '''
@@ -17,7 +17,8 @@ import math
 import mathutils
 import operator
 import bpy_extras.object_utils
-import os,sys,inspect,ctypes
+import os,sys,inspect,ctypes,winreg
+
 
 
 #from s import msg
@@ -41,13 +42,13 @@ def run(SQL):
 def pathM(arg=''):
     dirname,filename=os.path.split(os.path.abspath(__file__))
     if arg.upper()=='FILE':d=filename
-    else:d=dirname+'\\';d=repr(d);
+    else:d=dirname;d=repr(d);
     return d
         
 def pathBlender(arg=''):
     dirname,filename = os.path.split(os.path.abspath(sys.argv[0])) 
     if arg.upper()=='FILE':d=filename
-    else:d=dirname+'\\';d=repr(d);
+    else:d=dirname;d=repr(d);
     return d
 
 def pathBl(a=''):pathBlender(a)
@@ -61,13 +62,19 @@ def pathMe(arg=''):
     f=inspect.stack()[1][1];fp=bpy.data.texts[f[1:]].filepath;
     dirname,filename = os.path.split(fp) 
     if arg.upper()=='FILE':d=filename
-    else:d=dirname+'\\';d=repr(d);d=d[1:len(d)-1]
+    else:d=dirname;d=repr(d);d=d[1:len(d)-1]
     return d
 
 
 disk="D:"
-pathCC=disk+"\\mybpy\\tx\\"
+pathCC=disk+"\\mybpy\\tx"
 pathHDR=pathCC;fileHDR="default.hdr"
+pathTmp=disk+"/mybpyTmp"
+
+
+def getDesktop():
+    key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,r'Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders',)
+    return winreg.QueryValueEx(key, "Desktop")[0]
 
 #===========Varible===============================
 #------------------------------------------------
@@ -489,6 +496,34 @@ def selectVertInSimpleTerm(s=''):   # 'x>0 & x<10 & y>=0 & y<10 & z>0 & z<1'  &=
     bmesh.update_edit_mesh(obj.data, True)
 
 
+#------------selectVertLinkTerm------------'link=[vert index1,..],no=[vert index]'---
+def selectVertLinkTerm(s=''):  # Faces select
+    nli=s.find('no=')
+    if nli<0:endL=len(s)-1
+    else:endL=nli-1
+    lk=eval(s[5:endL])
+    
+    if nli>0:nl=eval(s[nli+3:])
+    else:nl=[]
+
+
+    obj=bpy.context.object
+    bm=bmesh.from_edit_mesh(obj.data)
+    for f in bm.faces:
+        f.select=False
+        Linked=False
+        for v in f.verts:
+            if v.index in nl:Linked=False;break
+            if v.index in lk:Linked=True
+        if Linked:
+            f.select=True
+            for v in f.verts: lk.append(v.index)
+            
+    bmesh.update_edit_mesh(obj.data, True)
+
+    
+
+
 #-----------selectEditMesh---------------------
 
 def selectEditMesh(Mode='V',ls=[]):
@@ -498,7 +533,9 @@ def selectEditMesh(Mode='V',ls=[]):
     #bm.faces.active = None
     
     md=Mode.upper()
-    if isType(ls,'s'):selectVertInSimpleTerm(ls);return
+    if isType(ls,'s'):
+        if ls[:4]=='link':selectVertLinkTerm(ls);return
+        else: selectVertInSimpleTerm(ls);return
     
     if ls!=[]:
         if md=='V': bmV=bm.verts
@@ -513,7 +550,8 @@ def selectEditMesh(Mode='V',ls=[]):
                 for v in bmV[i:i+1]:v.select=True
                 
         bmesh.update_edit_mesh(obj.data, True)
-    else:
+        
+    else:   #-------------select Face or Edge which Verts select----------
         if Mode=='F':
             for f in bm.faces:
                 f.select=False;hasNoSelV=False
@@ -589,13 +627,17 @@ def selectObject(ObjName=''):
         bpy.context.view_layer.objects.active=bpy.data.objects[ObjName]
     #-------------------------------------------------------
 
-def selectObj(ls=''):
+def selectObj(ls=''):   #allow multi select
     if isTp(ls,'s'):selectObject(ls)
     if isTp(ls,'[','('):
         for n in ls: selectObject(n)
 
-def sO(listOrstrName=''):selectObj(listOrstrName)
-def so(n):selectObj(n)
+def sO(listOrstrName=''):sN();selectObj(listOrstrName)  #select only one
+def so(n):sO(n)
+
+
+def sO_(ListOrstrName=''):selectObj(listOrstrName)  #allow multi select
+def so_(n):sO_(n)
     
 #----------select_linked_pick----------------------------------
 def selectLink(v=''):
@@ -1227,12 +1269,14 @@ def ctrl_2(v=2):bpy.ops.object.subdivision_set(level=v, relative=False)
 def ctrl_3(v=3):bpy.ops.object.subdivision_set(level=v, relative=False)
 def ctrl_4(v=4):bpy.ops.object.subdivision_set(level=v, relative=False)
 def ctrl_5(v=5):bpy.ops.object.subdivision_set(level=v, relative=False)
+def ctrl_6(v=6):bpy.ops.object.subdivision_set(level=v, relative=False)
 
 def ctr1(v=1):ctrl_1(v)
 def ctr2(v=2):ctrl_2(v)
 def ctr3(v=3):ctrl_3(v)
 def ctr4(v=4):ctrl_4(v)
 def ctr5(v=5):ctrl_5(v)
+def ctr6(v=6):ctrl_6(v)
 
 #----------------boolean modifier-----------------
 def booleanModifier(ObjName='',Operation='DIFFERENCE'):
@@ -1704,7 +1748,7 @@ def imgClear(Name=''):imageClear(Name)
 def imageOpen(Path='',File=''):
     if File=='' and Path!='': Path,File = os.path.split(Path)
     else:
-        if Path=='' and File=='': bpy.ops.image.open(filepath=pathCC+"cc.png", directory=pathCC, files=[{"name":"cc.png", "name":"cc.png"}], relative_path=True, show_multiview=False)
+        if Path=='' and File=='': bpy.ops.image.open(filepath=pathCC+"\\cc.png", directory=pathCC, files=[{"name":"cc.png", "name":"cc.png"}], relative_path=True, show_multiview=False)
         else:bpy.ops.image.open(filepath=Path + File,directory=Path,files=[{"name":File, "name":File}], relative_path=True, show_multiview=False)
 
 def imgOpen(Path='',File=''):imageOpen(Path,File)
@@ -1870,7 +1914,7 @@ def hasWorld(Name=''):
 #=================Nodes================================================
     
 #--------------Node Dictionary-----------------------------------------
-nodeDict0={'out':'ShaderNodeOutputMaterial','img':'ShaderialTexImage','bs':'ShaderNodeBsdfPrincipled','mix':'ShaderNodeMixShader','geo':'ShaderNodeNewGeometry','mt':'ShaderNodeMaterial'
+nodeDict0={'out':'ShaderNodeOutputMaterial','img':'ShaderNodeTexImage','bs':'ShaderNodeBsdfPrincipled','mix':'ShaderNodeMixShader','geo':'ShaderNodeNewGeometry','mt':'ShaderNodeMaterial'
           }
 
 
@@ -1910,6 +1954,16 @@ def nodeLink(OutputsNode,Oi,InputsNode,Ii,mt=''):  # Note: reverse original bpy 
     mt.node_tree.links.new(InputsNode.inputs[Ii],OutputsNode.outputs[Oi]);
 
 def nodelink(OutputsNode,Oi,InputsNode,Ii,mt=''):nodeLink(OutputsNode,Oi,InputsNode,Ii,mt)
+
+
+#---------------nodes save as script--------------------------------------------
+def nodesSaveAsScript():
+    pass
+
+
+#----------------nodes save as plug----------------------------------------------
+def nodesSaveAsPlug():
+    pass
 
 #---------------- Get Node Type-------------------------------------------------
 def getNodeType():
@@ -1951,29 +2005,35 @@ def nodesImagePaste(mt,*args,**kwargs):
         n6=nodeAdd('geo',mt);l6=n6.location;l6.x=l5.x-200;l6.y=l5.y+200
         nodeLink(n1,0,n5,1,mt); nodeLink(n3,0,n5,2,mt); nodeLink(n6,6,n5,0,mt);nodeLink(n5,0,n0,0,mt)
         l0=n0.location;l0.x=l5.x+200;l0.y=l5.y
-    
+
+        
+#--------------------HDR new  hdr(0): default hdr without img only light, hdr(3): 3 sphere to 4 sphere Enviroment light    
+def hdrNew(Path='',File=''):
+    pass
+
 
 #---------------------HDR---(can be PathFile one Argument)--------------------------------------
 def hdr(Path='',File=''):
-    if File=='' and Path!='': Path,File = os.path.split(Path)
+    if isTp(Path,'1') or isTp(File,'1'): hdrNew(Path,File)
     else:
-        if Path=='':Path=pathHDR
-        if File=='':File=fileHDR
+        if File=='' and Path!='': Path,File = os.path.split(Path)
+        else:
+            if Path=='':Path=pathHDR
+            if File=='':File=fileHDR
 
-    
-    imgOpen(Path,File)
-    #----------Version Different---------------------------------------
-    if vs()>=2.8:
-        if len(bpy.data.worlds)<=0:bpy.ops.world.new();
-        w=bpy.data.worlds[0];bpy.context.scene.world=w;w.use_nodes=True;
-        cnt=len(w.node_tree.nodes)
-        if cnt>0:
-            for i in range(cnt):
-                if w.node_tree.nodes[i].type=='TEX_ENVIRONMENT':w.node_tree.nodes.remove(w.node_tree.nodes[i])
-        w.node_tree.nodes.new(type="ShaderNodeTexEnvironment");
-        n=w.node_tree.nodes;i=len(n)-1;[i];n[i].image=bpy.data.images[File]
-        I=n[0].inputs[0];O=n[2].outputs[0]; w.node_tree.links.new(I,O);
-    #------------------------------------------------------------------    
+        imgOpen(Path,File)
+        #----------Version Different---------------------------------------
+        if vs()>=2.8:
+            if len(bpy.data.worlds)<=0:bpy.ops.world.new();
+            w=bpy.data.worlds[0];bpy.context.scene.world=w;w.use_nodes=True;
+            cnt=len(w.node_tree.nodes)
+            if cnt>0:
+                for i in range(cnt):
+                    if w.node_tree.nodes[i].type=='TEX_ENVIRONMENT':w.node_tree.nodes.remove(w.node_tree.nodes[i])
+            w.node_tree.nodes.new(type="ShaderNodeTexEnvironment");
+            n=w.node_tree.nodes;i=len(n)-1;[i];n[i].image=bpy.data.images[File]
+            I=n[0].inputs[0];O=n[2].outputs[0]; w.node_tree.links.new(I,O);
+        #------------------------------------------------------------------    
 
 #==================Render========================================
 def render():
@@ -2183,7 +2243,215 @@ def eachsv(SQL=''):eachSelectV(SQL)
 
 
 
+
+#==============Maya Surport===================================================
+def mayaDropBlendScript_filePath():
+    return 'c:/mybpy_mayaDropBlend'
+
+
+def mayaDropBlendScript_pyScript():
+    s="import bpy;bpy.ops.wm.read_factory_settings(use_empty=True);\
+scene = bpy.context.scene;\
+bpy.ops.wm.open_mainfile(filepath=[']<'>+$theFile+<'>[']);\
+bpy.ops.export_scene.obj(filepath=[']"+mayaDropBlendScript_filePath()+".obj[']);";
+
+    s=s.replace("[']",'\\"');s=s.replace("<'>",'"')
+    return s;
+
+def mayaDropBlendScript_finishScript():
+    s="try:"
+    s=s+"os.remove([']"+mayaDropBlendScript_filePath()+".py[']);";
+    s=s+"os.remove([']"+mayaDropBlendScript_filePath()+".obj[']);";
+    s=s+"os.remove([']"+mayaDropBlendScript_filePath()+".mtl[']);";
+    s=s+"\\"+"nexcept:pass"
+    
+    s=s.replace("[']",'\\"')
+    return s;
+
+
+def mayaDropBlendScript_py():
+    s="""
+//-----------------------------------------------
+global proc int
+performFileDropAction_Blender_Py(string $theFile)
+{
+    int $i=0;
+    string $ss=[pyScript];
+    string $s="s='"+$ss+"';f=open([FilePath],'w');f.write(s); f.close()";
+    python($s);    
+    $i=1;return($i);
+
+}
+
+//------------------------------------------------
+global proc int
+performFileDropAction_Blender_Finish(string $theFile)
+{
+    int $i=0;
+    string $s=[FinishScript];
+    python($s);    
+    $i=1;return($i);
+
+}
+
+"""
+    s=s.replace('[FilePath]','[\]"'+mayaDropBlendScript_filePath()+'.py[\]"');s=s.replace('[\]','\\')
+    s=s.replace('[pyScript]','"'+mayaDropBlendScript_pyScript()+'"')
+    s=s.replace('[FinishScript]','"'+mayaDropBlendScript_finishScript()+'"')
+    return s;
+
+
+
+def mayaDropBlendScript_object():  # part script of Bl object to maya
+    pathPy=mayaDropBlendScript_filePath()
+    s="""
+  //---------Blender export object file--------------
+    string $s="import os;os.system(r'[\]""+$pathBlender+"/blender[\]" --background --factory-startup --python [pathPy] --');";
+    python($s);
+"""
+    s=s.replace("[\]","\\");s=s.replace('[pathPy]',pathPy+'.py')
+    return s
+
+
+
+#----------------------------------------------------------------------------
+def mayaDropBlendScript():  #---proc main script 
+    s1="""
+
+//---Proc: Blender File Drop----------------------
+global proc int
+performFileDropAction_Blender(string $theFile)
+{
+  int $r=0;
+  string $pathBlender=[pathBlender];
+  string $F=toupper(substring($theFile,size($theFile)-5,size($theFile)));
+  string $bufs[];tokenize $theFile "/" $bufs;string $fileName = $bufs[size($bufs)-1];
+  if ($F==".BLEND"||$F=="BLEND1")
+  {$r=2;
+   performFileDropAction_Blender_Py($theFile);
+"""
+    
+    s2="""
+  //----------Import the file blender exported-----------
+    performFileImportAction([fileBlenderExported]);
+    performFileDropAction_Blender_Finish($theFile);
+  }
+  return($r);
+}
+"""
+    
+    p=pathBlender();p=p.replace("\\","/");p=p.replace("//","/");p=p.replace("'",'"');
+    s1=s1.replace('[pathBlender]',p);
+    
+    si=''; #string insert between s1 and s2
+    si+=mayaDropBlendScript_object()
+
+    s2=s2.replace('[fileBlenderExported]','"'+mayaDropBlendScript_filePath()+'.obj"')
+    s3=mayaDropBlendScript_py()
+    s=s1+si+s2+s3
+    return s
+
+#---------------------------------------------------------------------------
+def mayaDropBlend_plugIn(a):  # Write performFileDropAction_plugIn part
+        if a=='blender':return 'if($r==0){$r=performFileDropAction_Blender($theFile);};//if run $r=2'
+        else:return ''
+            
+def mayaDropBlend_proc(a):   # Write performFileDropAction_Blend part
+    if a=='blender':return mayaDropBlendScript()
+    else: return ''
+        
+#---------------------------------------------------------------------------
+def mayaDropImgClear():  #----clear the function of self def maya Drop img--- 
+      FilePath=r'C:\Users\Administrator\Documents\maya\scripts\performFileDropAction.mel'
+      os.remove(FilePath)
+      
+def mayaDropImg(Action=1):  #---1 is add function ----0 is clear function
+    if Action==0:mayaDropImgClear()
+    else:
+        myDocPath=r'C:\Users\Administrator\Documents'
+        if 'maya' in os.listdir(myDocPath):
+            if 'scripts' in os.listdir(myDocPath+'\\maya'):
+                FilePath=myDocPath+'\\maya\\scripts\\performFileDropAction.mel'
+                s1="""
+global proc int
+performFileDropAction (string $theFile)
+{
+int $r=performFileDropAction_plugIn($theFile);// <--Self Definate Plug In 
+if($r==0){$r=performFileImportAction( $theFile );}; //<--Original
+return($r);
+}
+
+//---plugIn--------------------
+global proc int //When return=0 continue,r<>0 not continue
+performFileDropAction_plugIn(string $theFile)
+{
+int $r=0;
+"""
+                s2="""
+if($r==0){$r=performFileDropAction_addImgShader($theFile);};//if run $r=1
+return($r);
+}
+
+
+//---Proc: Drop Image file paste Texture immediately ----------------------
+global proc int
+performFileDropAction_addImgShader(string $theFile)
+{
+int $r=0;
+string $F=toupper(substring($theFile,size($theFile)-3,size($theFile)));
+string $bufs[];tokenize $theFile "/" $bufs;string $fileName = $bufs[size($bufs)-1];
+
+if ($F==".PNG"||$F==".JPG"||$F==".HDR")
+{
+if($F==".HDR") //drop HDR File if no any obj is selected Add Enirement Sphere
+{ string $s[]=`ls -sl`;if ($s[0]==""){polySphere;scale -r 100 100 100;polyNormal -normalMode 0 -userNormalMode 0 -ch 1;}}
+
+python("import maya.cmds as mc");
+python("sel=mc.ls(sl=1)");
+python("file_tex='"+$theFile+"'");
+python("mc.sets(name='imgGrp', renderable=True, empty=True)");
+python("shaderNode = mc.shadingNode('phong', name='"+$fileName+"', asShader=True)");
+python("fileNode = mc.shadingNode('file', name='file', asTexture=True)");
+python("mc.setAttr(fileNode+'.fileTextureName', file_tex , type='string')");
+python("shadingGroup=mc.sets(name='texGrp',renderable=True,empty=True)");
+python("mc.connectAttr(shaderNode+'.outColor',shadingGroup+'.surfaceShader',force=True)");
+python("mc.connectAttr(fileNode+'.outColor',shaderNode+'.color',force=True)");
+python("mc.surfaceShaderList(shaderNode,add='imgGrp')");
+python("mc.sets(sel,e=True,forceElement='imgGrp')");
+python("mc.select(sel)");
+python("mc.hyperShade(assign=shaderNode)");
+select -cl;
+$r=1;}
+
+return($r);
+}
+
+"""
+            s=s1+mayaDropBlend_plugIn(Action)+s2+mayaDropBlend_proc(Action)
+
+            f=open(FilePath,'w');f.write(s); f.close()
+
+
+#--------------------Drop Blender File Action---------------------------------------------------------
+def mayaDropBlendClear():#-----Clear Drop Blender File Function in Maya only keep drop image Texture
+    mayaDropImg()
+
+def mayaDropBlend(Action=1):
+    if Action==0:mayaDropBlendClear()
+    else:mayaDropImg('blender')
+
+
+def mayaDropBlender(Action=1):mayaDropBlend(Action)
+def mayadropblender(Action=1):mayaDropBlend(Action)
+def mayadropblend(Action=1):mayaDropBlend(Action)
+def mayabl(Action=1):mayaDropBlend(Action)
+
+
+
+
+#=============Chinese Defination==============================================
 #=============常用特色中文命令定义(也可看出对应英文快捷命s令,可直接控制台输入对应英文命令,中文则需要写外面文本编辑器粘进Blender)===========================
+
 
 #-----------贴图------------------
 
@@ -2232,6 +2500,22 @@ def 物体模式():m0()
 def 点编辑模式():m1()
 def 线编辑模式():m2()
 def 面编辑模式():m3()
+
+
+
+
+#----------Maya功能优化-----------------
+            
+def 使maya支持拖拽贴图():mayaDropImg()
+
+def 清除maya拖拽贴图功能():mayaDropImg(0)
+
+
+
+def 使maya支持拖拽blender文件():mayaDropBlend()
+
+def 清除maya拖拽blender文件功能():mayaDropBlend(0)
+
 
 #=============以下区域可自定义(可自己用def语句类似上面的设定 )====================================================
 
