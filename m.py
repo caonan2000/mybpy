@@ -1,4 +1,4 @@
-#--------mybpy (ver:1.04)-----2021.7.4 publish----by:caonan (mail: caonan2000@163.com)
+#--------mybpy (ver:1.05)-----2021.7.8 publish----by:caonan (mail: caonan2000@163.com)
 
 #if you want use mybpy,please paste the following tow lines to blender py console or script head
 '''
@@ -2248,20 +2248,19 @@ def eachsv(SQL=''):eachSelectV(SQL)
 def mayaDropBlendScript_filePath():
     return 'c:/mybpy_mayaDropBlend'
 
-
-def mayaDropBlendScript_pyScript():
+def mayaDropBlendScript_pyScript(b="obj"):
     s="import bpy;bpy.ops.wm.read_factory_settings(use_empty=True);\
 scene = bpy.context.scene;\
 bpy.ops.wm.open_mainfile(filepath=[']<'>+$theFile+<'>[']);\
-bpy.ops.export_scene.obj(filepath=[']"+mayaDropBlendScript_filePath()+".obj[']);";
+bpy.ops.export_scene."+b+"(filepath=[']"+mayaDropBlendScript_filePath()+"."+b+"[']);";
 
     s=s.replace("[']",'\\"');s=s.replace("<'>",'"')
     return s;
 
-def mayaDropBlendScript_finishScript():
+def mayaDropBlendScript_finishScript(b='obj'):
     s="try:"
     s=s+"os.remove([']"+mayaDropBlendScript_filePath()+".py[']);";
-    s=s+"os.remove([']"+mayaDropBlendScript_filePath()+".obj[']);";
+    s=s+"os.remove([']"+mayaDropBlendScript_filePath()+"."+b+"[']);";
     s=s+"os.remove([']"+mayaDropBlendScript_filePath()+".mtl[']);";
     s=s+"\\"+"nexcept:pass"
     
@@ -2269,7 +2268,7 @@ def mayaDropBlendScript_finishScript():
     return s;
 
 
-def mayaDropBlendScript_py():
+def mayaDropBlendScript_py(b='obj'):
     s="""
 //-----------------------------------------------
 global proc int
@@ -2296,8 +2295,8 @@ performFileDropAction_Blender_Finish(string $theFile)
 
 """
     s=s.replace('[FilePath]','[\]"'+mayaDropBlendScript_filePath()+'.py[\]"');s=s.replace('[\]','\\')
-    s=s.replace('[pyScript]','"'+mayaDropBlendScript_pyScript()+'"')
-    s=s.replace('[FinishScript]','"'+mayaDropBlendScript_finishScript()+'"')
+    s=s.replace('[pyScript]','"'+mayaDropBlendScript_pyScript(b)+'"')
+    s=s.replace('[FinishScript]','"'+mayaDropBlendScript_finishScript(b)+'"')
     return s;
 
 
@@ -2315,7 +2314,7 @@ def mayaDropBlendScript_object():  # part script of Bl object to maya
 
 
 #----------------------------------------------------------------------------
-def mayaDropBlendScript():  #---proc main script 
+def mayaDropBlendScript(b='obj'):  #---proc main script  -- b:  filetype when export : default is obj, also can be 'fbx'
     s1="""
 
 //---Proc: Blender File Drop----------------------
@@ -2346,18 +2345,18 @@ performFileDropAction_Blender(string $theFile)
     si=''; #string insert between s1 and s2
     si+=mayaDropBlendScript_object()
 
-    s2=s2.replace('[fileBlenderExported]','"'+mayaDropBlendScript_filePath()+'.obj"')
-    s3=mayaDropBlendScript_py()
+    s2=s2.replace('[fileBlenderExported]','"'+mayaDropBlendScript_filePath()+'.'+b+'"')
+    s3=mayaDropBlendScript_py(b)
     s=s1+si+s2+s3
     return s
 
 #---------------------------------------------------------------------------
-def mayaDropBlend_plugIn(a):  # Write performFileDropAction_plugIn part
+def mayaDropBlend_plugIn(a,b):  # Write performFileDropAction_plugIn part
         if a=='blender':return 'if($r==0){$r=performFileDropAction_Blender($theFile);};//if run $r=2'
         else:return ''
             
-def mayaDropBlend_proc(a):   # Write performFileDropAction_Blend part
-    if a=='blender':return mayaDropBlendScript()
+def mayaDropBlend_proc(a,b):   # Write performFileDropAction_Blend part
+    if a=='blender':return mayaDropBlendScript(b)
     else: return ''
         
 #---------------------------------------------------------------------------
@@ -2365,8 +2364,8 @@ def mayaDropImgClear():  #----clear the function of self def maya Drop img---
       FilePath=r'C:\Users\Administrator\Documents\maya\scripts\performFileDropAction.mel'
       os.remove(FilePath)
       
-def mayaDropImg(Action=1):  #---1 is add function ----0 is clear function
-    if Action==0:mayaDropImgClear()
+def mayaDropImg(a=1,b=''):  #---1 is add function ----0 is clear function
+    if a==0:mayaDropImgClear()
     else:
         myDocPath=r'C:\Users\Administrator\Documents'
         if 'maya' in os.listdir(myDocPath):
@@ -2427,7 +2426,7 @@ return($r);
 }
 
 """
-            s=s1+mayaDropBlend_plugIn(Action)+s2+mayaDropBlend_proc(Action)
+            s=s1+mayaDropBlend_plugIn(a,b)+s2+mayaDropBlend_proc(a,b)
 
             f=open(FilePath,'w');f.write(s); f.close()
 
@@ -2436,15 +2435,15 @@ return($r);
 def mayaDropBlendClear():#-----Clear Drop Blender File Function in Maya only keep drop image Texture
     mayaDropImg()
 
-def mayaDropBlend(Action=1):
-    if Action==0:mayaDropBlendClear()
-    else:mayaDropImg('blender')
+def mayaDropBlend(b='obj'):
+    if b==0:mayaDropBlendClear()
+    else:mayaDropImg('blender',b)
 
 
-def mayaDropBlender(Action=1):mayaDropBlend(Action)
-def mayadropblender(Action=1):mayaDropBlend(Action)
-def mayadropblend(Action=1):mayaDropBlend(Action)
-def mayabl(Action=1):mayaDropBlend(Action)
+def mayaDropBlender(b='obj'):mayaDropBlend(b)
+def mayadropblender(b='obj'):mayaDropBlend(b)
+def mayadropblend(b='obj'):mayaDropBlend(b)
+def mayabl(b='obj'):mayaDropBlend(b)
 
 
 
@@ -2511,8 +2510,7 @@ def 使maya支持拖拽贴图():mayaDropImg()
 def 清除maya拖拽贴图功能():mayaDropImg(0)
 
 
-
-def 使maya支持拖拽blender文件():mayaDropBlend()
+def 使maya支持拖拽blender文件(传递文件格式='obj'):mayaDropBlend(传递文件格式)   #参数为通过什么中间格式文件来传递,不写默认为obj格式, 也可用fbx格式
 
 def 清除maya拖拽blender文件功能():mayaDropBlend(0)
 
