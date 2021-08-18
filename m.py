@@ -1,4 +1,4 @@
-#--------mybpy (ver:1.05)-----2021.7.8 publish----by:caonan (mail: caonan2000@163.com)
+#-----mybpy (ver:1.07)----2021.8.15 Publish-----QQ group: mybpy (519692851)---
 
 #if you want use mybpy,please paste the following tow lines to blender py console or script head
 '''
@@ -24,16 +24,17 @@ import os,sys,inspect,ctypes,winreg
 #from s import msg
 
 #================My self definate string quick language===============
-def sq(SQL):
-    s=SQL.replace('`','\n')
+def sq(S):
+    s=S.replace('`','\n')
     s=s.replace('~','\t')
     return s
 
-def exe(SQL):
-    exec(sq(SQL))
+def exe(S=''):
+    exec(sq(S))
 
-def run(SQL):
-    exec(sq(SQL))
+def run(S=''):
+    if S=='':exec('bpy.ops.text.run_script(override("TEXT_EDITOR"))')   # Console: rec();run(); #after rec run script immediatly
+    else:exec(sq(S))
 
 #================PATH=======================================
     
@@ -76,6 +77,15 @@ def getDesktop():
     key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,r'Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders',)
     return winreg.QueryValueEx(key, "Desktop")[0]
 
+#===============File======================================
+
+def fileRead(FilePath=''):
+    f=open(FilePath,encoding="utf-8");s=f.read();f.close()
+    return s
+
+def read(f):return fileRead(f)
+
+
 #===========Varible===============================
 #------------------------------------------------
 def Vector(ls):
@@ -86,6 +96,14 @@ def radians(angle):
     return math.radians(angle)
 
 def rd(angle):return radians(angle)
+
+#------------------------------------------------
+def degrees(rd):
+    return math.degrees(rd)
+
+def dgrs(rd):return degrees(rd)
+
+
 #----------version-------------------------------
 def version():
     v=bpy.app.version
@@ -173,6 +191,15 @@ def combineList(List1,List2):
 def cmb(List1,List2):combineList(List1,List2)
 
 
+#----------------roundVert---(x,y,z) r=2 digit round----------------
+def roundV(ls='',r=2):
+    if ls=='':return ls;
+    if isType(ls,'s'):
+        i=ls.find('(');i1=ls.find(')');s=ls[i+1:i1];S=s.split(',');
+        ss=ls[0:i+1]+ str(round(float((S[0]).strip()),r))+','+str(round(float(S[1].strip()),r))+','+str(round(float(S[2].strip()),r))+ls[i1:]
+        return ss
+        
+
 #---------last (return last object)---------------------------
 def last(Type='OBJECT'):
   
@@ -181,8 +208,59 @@ def last(Type='OBJECT'):
     if Type.upper()=='DRIVER':obj=bpy.context.object;d=obj.animation_data.drivers;i=len(d)-1;return d[i].driver
     if Type.upper() in ('MATERIAL','MT'):m=bpy.data.materials; i=len(m)-1;return m[i]
     if Type.upper()=='VI':obj=bpy.context.object;mx=len(obj.data.vertices);LastVertIndex=mx;return mx;
+
+
+
+#=================Collection=====================================
+#--------get collectionIndex() use for m() move to coll, Note:index is +1 than collections list index --- 
+def collectionIndex(Name=''):
+    i=0; #--0 is default master scene
+    for ii,c in enumerate(bpy.data.collections) :
+        if c.name.upper()==Name.upper():
+            i=ii+1
+    return i
+
+#---------collection New---------(Not finish, not Rename )-----------
+def collectionNew(Name='',Nested=False):   #if nested=True is under the current selected collection
+    if Name=='':
+        bpy.ops.outliner.collection_new(override('OUTLINER'),nested=Nested);
+    else:
+        I=collectionIndex(Name)
+        if I==0:
+            bpy.ops.outliner.collection_new(override('OUTLINER'),nested=Nested);  
+            #n=len(bpy.data.collections)-1;bpy.data.collections[n].name=Name #----collection index not stable, maybe wrong name
+
+def cNew(Name='',Nested=False):collectionNew(Name,Nested)
+
+#---------collection Rename ----------------
+def collectionRename(Name0='',Name1=''):  #Name0=Original Name, Name1=New Name
+    try:bpy.data.collections[Name0].name=Name1
+    except:pass
     
+def cRename(Name0='',Name1=''):collectionRename(Name0,Name1)
+
+def cName(Name='',Name1=''):  # 2 use way:  cName('New Collection') ;  cName('old Collection name','rename collection name')  
+    if Name1=='':  #---new Collection
+         I=collectionIndex(Name)
+         if I==0: cNew(Name)
+    else:cRename(Name,Name1) #rename Collection
+
+
+#----------collectionInitial---------------
+def collectionInitial():  #only keep collections[0]
+    if len(bpy.data.collections)>1:
+        for c in bpy.data.collections:
+            if c.name!='Collection': bpy.data.collections.remove(c)
+            
+def cIni():collectionInitial()
+
+
 #============Mode=================================
+
+#------------Info show more detail mode-----------
+def infoMore(t=True):
+    bpy.app.debug_wm = t
+
 #------------UI-----------------------------------
 def areaUI(SetUI='VIEW_3D'):
 
@@ -226,18 +304,10 @@ def modeIndex():
             for i in range(3):
                 if bpy.context.tool_settings.mesh_select_mode[i]: return i+1
         return md
-    except:return None
+    except:return ''
         
 
 def modeI():return modeIndex()
-
-#--------get collectionIndex() use for m() move to coll, Note:index is +1 than collections list index --- 
-def collectionIndex(Name=''):
-    i=0; #--0 is default master scene
-    for ii,c in enumerate(bpy.data.collections) :
-        if c.name.upper()==Name.upper():
-            i=ii+1
-    return i
 
 #-----------mode---------------------------------------------
 def mode(m='OBJECT'):
@@ -251,8 +321,10 @@ def tab():
     else:mode('OBJECT')
     
 def m0():
-    if bpy.context.object.mode!='OBJECT':mode('OBJECT')
-
+    try:
+        if bpy.context.object.mode!='OBJECT':mode('OBJECT')
+    except:pass
+    
 #--------mA():mode in select All faces then keep object mode-  
 def modeObjectButSelectAllFace():
     m3();a();m0()
@@ -269,24 +341,25 @@ def m1():sMode('VERT')
 def m2():sMode('EDGE')
 def m3():sMode('FACE')
 
-def m(i=''):    #<--when i=int is mode select ; i=str is collection move shotkey,default m(''),move to master scene 
+def m(i=''):    #<--when i=int is mode select ; i=str is collection move shotkey,default m(''),move to master scene
     if str(type(i))=="<class 'int'>":
         if i==0: m0() #OBJECT MODE
         if i==1: m1() #EDIT-VERT
         if i==2: m2() #EDIT-EDGE
         if i==3: m3() #EDIT-FACE
+
         
-    if str(type(i))=="<class 'str'>":  #--Move to Collection (or Add New Coll)--
+    if str(type(i))=="<class 'str'>" and vs()>=2.8:  #--Move to Collection (or Add New Coll)--[2.79 No collection]
         if modeI()!=0:m0()
         Is_new=False;cName=''
         I=collectionIndex(i)
         if I==0:
             if i.isnumeric():I=int(i)
             else:Is_new=True;cName=i
-                
+  
         bpy.ops.object.move_to_collection(collection_index=I, is_new=Is_new, new_collection_name=cName)
         if Is_new:bpy.ops.object.move_to_collection(collection_index=len(bpy.data.collections))
-    
+       
 #-----------proportional Edit Mode----------------------------
 def proportionalEditMode(Size=1,Falloff=1):
 
@@ -310,7 +383,12 @@ def proportionalEditMode(Size=1,Falloff=1):
     #-----------------------------------------------------------------
      
 def pMode(size=1,f=1): proportionalEditMode(size,f)
+def oMode(size=1,f=1): proportionalEditMode(size,f)
 def o(s=1,f=1):pMode(s,f)
+
+
+
+def isOmode():return bpy.context.scene.tool_settings.use_proportional_edit_objects  #return True or False
 
 
 #================Vert Convert==================================
@@ -320,6 +398,13 @@ def vector2tuple(v):
     
     
 def v2t(v):return vector2tuple(v)
+
+
+#----------rotation 2 tuple-----------------------------------------------
+def rotation2tuple(v):
+    return (v.x,v.y,v.z)
+    
+def r2t(v):return rotation2tuple(v)
 
 #----------v2e (vert index to edge index)---------------------------------
  #--only one edge, return is int index---
@@ -412,6 +497,15 @@ def f2v(fIndex):
     return lsV
 
 
+
+#--------------context---------------------
+def context():
+    return bpy.context
+
+def ctxt(): return bpy.context
+def ctx():return bpy.context
+def ct():return bpy.context
+
 #-------------contextObject----------------
 def contextObject():
     return bpy.context.object
@@ -434,11 +528,29 @@ def name(Name='OBJ'):
     return Name
 
 def nm(Name='OBJ'):return name(Name)
-def n(Name='OBJ'): return name(Name)
 def f2(Name='OBJ'):return name(Name)
+
+def n(Name=''):
+    if Name=='':exec('newLine()')   #=_n() : add new line in Text Editor  
+    else:return name(Name)       #=name()
+
+#----------------return list of select Object----------------------------------------------------
+def listSelectObject():
+    n=len(bpy.context.selected_objects)
+    if n<=0:return []
+    else:
+        ls=[]
+        for o in bpy.context.selected_objects:
+            ls.append(o.name)
+        return ls    
 
 #----------------return list of object select vert or edge or face (in edit mode) ---------------
 def listSelect(v='V'):
+    if v.upper()=='O':return listSelectObject()
+    else:return listSelectVEF(v)
+
+
+def listSelectVEF(v='V'):
     obj=bpy.context.edit_object;me=obj.data
     bm=bmesh.from_edit_mesh(me)
     vv=v.upper()
@@ -454,34 +566,134 @@ def lsSel(v='V'):return listSelect(v)
 def lsV(): return listSelect('V')
 def lsE(): return listSelect('E')
 def lsF(): return listSelect('F')
+def lsO(): return listSelect('O')
+
+
+#-------------VertX/Y/Z (return)--------------------------------
+
+def vertCo(Index):
+    obj=bpy.context.object;me=obj.data
+    bm=bmesh.from_edit_mesh(me)
+    for v in bm.verts[Index:Index+1]:pass
+    return v2t(v.co)
+
+def vCo(i):return vertCo(i)
+
+
+def vertX(Index):
+    obj=bpy.context.object;me=obj.data
+    bm=bmesh.from_edit_mesh(me)
+    for v in bm.verts[Index:Index+1]:pass
+    return v.co.x
+def vX(i):return vertX(i)
+
+
+def vertY(Index):
+    obj=bpy.context.object;me=obj.data
+    bm=bmesh.from_edit_mesh(me)
+    for v in bm.verts[Index:Index+1]:pass
+    return v.co.y
+def vY(i):return vertY(i)
+
+
+def vertZ(Index):
+    obj=bpy.context.object;me=obj.data
+    bm=bmesh.from_edit_mesh(me)
+    for v in bm.verts[Index:Index+1]:pass
+    return v.co.z
+
+def vZ(i):return vertZ(i)
+
+
+
+
 #-------------vertInRange---------------------------------------
 def vertInRang(x=[],y=[],z=[]):
     obj=bpy.context.edit_object;me=obj.data
     bm=bmesh.from_edit_mesh(me)
     
 def vRng(x=[],y=[],z=[]):vertInRange(x,y,z)
-#-----------select all----------------------------------------
-def selectAll():
+
+#-----------selectCollectionObject----------------------------
+def selectCollectionObject(cName):  #cName can be string or list,  if cName=0 is Scene Master Collection
     try:
-        if mode('name')=='EDIT':bpy.ops.mesh.select_all(action='SELECT')
-        else:bpy.ops.object.select_all(action='SELECT');
+        exec('aa()'); #--deselect all first
+        if isType(cName,'1'):cName=[cName] # Scene MasterCollection or Index of collection need -1
+        if isType(cName,'s'):cName=[cName] # cName string to list
+        for n in cName:
+            if n==0:
+                allObj=bpy.context.scene.collection.objects
+            else:
+                if isType(n,'1'):allObj=bpy.data.collections[n-1].all_objects
+                else:allObj=bpy.data.collections[n].all_objects
+            for o in allObj:o.select_set(True);
     except:pass
     
-def a():selectAll()
+#-----------select all----------------------------------------
+def selectAll(cName=''):   #cName=collection Name
+    try:
+        if mode('name')=='EDIT':bpy.ops.mesh.select_all(action='SELECT')
+        else:
+            if cName=='':bpy.ops.object.select_all(action='SELECT');
+            else:selectCollectionObject(cName)
+    except:pass
 
+    
+def a(cName=''):selectAll(cName)   
+
+
+#-----------selectCollectionObject----------------------------
+def deselectCollectionObject(cName):  #cName can be string or list
+    try:
+        if isType(cName,'1'):cName=[cName] # Scene MasterCollection or Index of collection need -1
+        if isType(cName,'s'):cName=[cName] # cName string to list
+        for n in cName:
+            if n==0:
+                allObj=bpy.context.scene.collection.objects
+            else:
+                if isType(n,'1'):allObj=bpy.data.collections[n-1].all_objects
+                else:allObj=bpy.data.collections[n].all_objects
+            for o in allObj:o.select_set(False);
+    except:pass
+    
 #----------deselect all---------------------------------------
-def deselectAll():
-    bpy.ops.object.select_all(action='DESELECT');
+def deselectAll(cName=''):  #cName=collection Name
+    if mode('name')=='EDIT':exec('sN()')
+    else:
+        if cName=='':bpy.ops.object.select_all(action='DESELECT');
+        else:deselectCollectionObject(cName)
+    
+def alt_a(cName=''):deselectAll(cName)
+def altA(cName=''):alt_a(cName)
+def aa(cName=''): alt_a(cName)
 
-def alt_a():deselectAll()
-def altA():alt_a()
-def aa(): alt_a()
 
+#----------selectFaceAfterSelVert----------------------
+def selectFaceAfterSelVert(bm=''):
+    s=''
+    for f in bm.faces:
+        hasNoSelV=False
+        for v in f.verts:
+            if v.select==False:hasNoSelV=True;break   
+        if hasNoSelV:continue
+        f.select=True
 
-#----------selectVertInSimpleTerm----------------------
+#-----------selectEdgeAfterSelVert---------------------
+def selectEdgeAfterSelVert(bm=''):
+    s=''
+    for e in bm.edges:
+        hasNoSelV=False
+        for v in e.verts:
+            if v.select==False:hasNoSelV=True;break   
+        if hasNoSelV:continue
+        e.select=True
+        
+#----------selectVertInSimpleTerm----------------------    
 def selectVertInSimpleTerm(s=''):   # 'x>0 & x<10 & y>=0 & y<10 & z>0 & z<1'  &=and |=or  ,=and
     obj=bpy.context.object
     bm=bmesh.from_edit_mesh(obj.data)
+    for e in bm.edges:e.select=False;
+    for f in bm.faces:f.select=False;
     for v in bm.verts:
         v.select=False;
         ss=s.replace('x','v.co.x')
@@ -492,9 +704,8 @@ def selectVertInSimpleTerm(s=''):   # 'x>0 & x<10 & y>=0 & y<10 & z>0 & z<1'  &=
         ss=ss.replace(',',' and ')
         ss='if '+ss+':v.select=True'
         exec(sq(ss))
-    
+    selectFaceAfterSelVert(bm)
     bmesh.update_edit_mesh(obj.data, True)
-
 
 #------------selectVertLinkTerm------------'link=[vert index1,..],no=[vert index]'---
 def selectVertLinkTerm(s=''):  # Faces select
@@ -522,22 +733,23 @@ def selectVertLinkTerm(s=''):  # Faces select
     bmesh.update_edit_mesh(obj.data, True)
 
     
-
-
 #-----------selectEditMesh---------------------
 
-def selectEditMesh(Mode='V',ls=[]):
-
+def selectEditMesh(Mode='V',ls=[],VertOnly=False): 
     obj=bpy.context.edit_object
     bm=bmesh.from_edit_mesh(obj.data)
     #bm.faces.active = None
     
+    exec('sN()');
     md=Mode.upper()
+    
+    if isType(ls,'1'):ls=[ls]
     if isType(ls,'s'):
         if ls[:4]=='link':selectVertLinkTerm(ls);return
         else: selectVertInSimpleTerm(ls);return
     
     if ls!=[]:
+        
         if md=='V': bmV=bm.verts
         if md=='E': bmV=bm.edges
         if md=='F': bmV=bm.faces
@@ -549,7 +761,7 @@ def selectEditMesh(Mode='V',ls=[]):
             if i<cnt:
                 for v in bmV[i:i+1]:v.select=True
                 
-        bmesh.update_edit_mesh(obj.data, True)
+        bmesh.update_edit_mesh(obj.data,True)
         
     else:   #-------------select Face or Edge which Verts select----------
         if Mode=='F':
@@ -567,9 +779,12 @@ def selectEditMesh(Mode='V',ls=[]):
                     if v.select==False:hasNoSelV=True;break
                 if hasNoSelV:e.select=False;continue
                 e.select=True
+
                 
-                 
-        
+    if Mode=='V' and VertOnly==False: #--edge and face both select when select 2 or 4 Verts in then same time         
+        selectEdgeAfterSelVert(bm)            
+        selectFaceAfterSelVert(bm)
+    
         
 #-----------deselectEditMesh---------------------
 def deselectEditMesh(Mode='V',ls=[]):
@@ -597,17 +812,24 @@ def selNone():
 def selN():selNone()
 def sN():selN()
 #-----------select vert------------------------
-def selectVert(ls=[]):m1();selectEditMesh('V',ls)
+def selectVert(ls=[]):selectEditMesh('V',ls)
 def selV(ls=[]):selectVert(ls)
 def sV(ls=[]):selV(ls)
+def sv(ls=[]):sV(ls)
+def v(ls=[]):selectVert(ls)
 #-----------select edge------------------------
-def selectEdge(ls=[]):m2();selectEditMesh('E',ls)
+def selectEdge(ls=[]):
+     m2();selectEditMesh('E',ls)
+
 def selE(ls=[]):selectEdge(ls)
 def sE(ls=[]):selectEdge(ls)
 def sE_(ls=[]):selE(v2e(ls))  #<--note: use verts list  as Argument
 
 #-----------select face------------------------
-def selectFace(ls=[]):m3();selectEditMesh('F',ls)
+def selectFace(ls=[]):
+    m3();selectEditMesh('F',ls)
+
+
 def selF(ls=[]):selectFace(ls)
 def sF(ls=[]):selectFace(ls)
 def sF_(ls=[]):selF(v2f(ls))  #<--note: use verts list as Argument
@@ -623,7 +845,7 @@ def selectObject(ObjName=''):
     else:
         bpy.data.objects[ObjName].select_set(True)
         bpy.context.scene.objects[ObjName].select_set(True)
-        bpy.context.collection.objects[ObjName].select_set(True)
+        #bpy.context.collection.objects[ObjName].select_set(True)
         bpy.context.view_layer.objects.active=bpy.data.objects[ObjName]
     #-------------------------------------------------------
 
@@ -632,7 +854,14 @@ def selectObj(ls=''):   #allow multi select
     if isTp(ls,'[','('):
         for n in ls: selectObject(n)
 
-def sO(listOrstrName=''):sN();selectObj(listOrstrName)  #select only one
+def sO(a=''):
+    sN();
+    if isTp(a,'1'):   #------if  a is number, select first number of objects lastest add
+        for obj in bpy.context.scene.objects[0:a]:
+            selectObject(obj.name)
+    else:selectObj(a)  #select only one
+
+
 def so(n):sO(n)
 
 
@@ -647,8 +876,10 @@ def selectLink(v=''):
         bpy.ops.mesh.select_linked_pick(deselect=False, delimit={'SEAM'}, index=v)
     else:
         bpy.ops.mesh.select_linked_pick(deselect=False, delimit={'SEAM'}, object_index=0, index=v)
-        
-def l(v=''):selectLink(v)
+#------------l() mul functions:  only x value is selecetLink(x), has y,z, is goto location
+def l(x='',y='',z=''):
+    if y=='' and z=='': selectLink(x)
+    else:exec('GoLocation(x,y,z)') 
 
 #----------loop_mul_select (only surpot edge)-------------------------------------
 def selectLoop(Ring=False):
@@ -656,15 +887,10 @@ def selectLoop(Ring=False):
     
         
 def alt_clk(r=False):selectLoop(r)
-def alt(r):alt_clk(r)
+def alt(r=False):alt_clk(r)
 def shft_alt_clk(r=False):selectLoop(r)
 
-#---------loopCircle---------------------------------------------------------------
-def loopCircle(ls=[]): #----not useful (not finish yet)
-    obj=bpy.context.edit_object
-    bm=bmesh.from_edit_mesh(obj.data)
-    for v in bm.verts:pass
-    
+
 #----------hide---------------------------------------------------------------------
 def hide():
     if mode()=='EDIT':u=ui();m3();bpy.ops.mesh.hide(unselected=False)
@@ -687,7 +913,37 @@ def revHide():
 def shft_h():revHide()
 def H():revHide()
 #==================View3D================================================
+def override(AreaType='VIEW_3D'):  #----ctrR use: must overrideContext before use--------
+    #----standard codes answer in  https://blender.stackexchange.com-------need override context --------
 
+    win      = bpy.context.window
+    scr      = win.screen
+    areas  = [area for area in scr.areas if area.type ==AreaType.upper()]
+    region   = [region for region in areas[0].regions if region.type == 'WINDOW']
+    Override = {'window':win,
+                'screen':scr,
+                'area'  :areas[0],
+                'region':region[0],
+                'scene' :bpy.context.scene,
+                }
+    
+    return Override
+
+
+def ovrd(a='VIEW_3D'):return override(a)
+def ov(a='VIEW_3D'):return override(a)
+#----------------------------------------------------------------------------------------------------------------
+def contextArea(Type='VIEW_3D'): #if context has 3D_View use context , not use find first 3D View.   ca0() use
+    sc=bpy.context.screen
+
+    for a in sc.areas:
+        if a.type==Type:return a
+        
+    sc=bpy.data.screens['Layout']
+    for a in sc.areas:
+        if a.type==Type:return a
+
+    
 #---------------snap----------------------------------
 def snapCursor2Vert(vIndex):
     
@@ -722,6 +978,332 @@ def c0():snapCursor2Center()
 def cO():c0()
 
 
+
+#=================Get Index of Vert/Edge/Face====================================================
+
+#----------------show object data select vert or edge or face (in object mode)---------------
+def getSelectObjData(v='V'):
+    obj=bpy.context.object;me=obj.data
+    vv=v.upper()
+    if vv=='V':V=obj.data.vertices
+    if vv=='E':V=obj.data.edges
+    if vv=='F':V=obj.data.palygons
+    
+    s=""
+    for v in V:
+        if v.select: s=s+str(v.index)+',' 
+    ss='['+s[:len(s)-1]+']'
+    #print(ss)
+    return ss
+    
+
+#----------------show object select vert or edge or face (in edit mode) ---------------
+def getSelect(v='V'):
+    obj=bpy.context.edit_object;me=obj.data
+    bm=bmesh.from_edit_mesh(me)
+    vv=v.upper()
+    if vv=='V':bmV=bm.verts
+    if vv=='E':bmV=bm.edges
+    if vv=='F':bmV=bm.faces
+    
+    s=""
+    for v in bmV:
+        if v.select: s=s+str(v.index)+',' 
+    ss='['+s[:len(s)-1]+']'
+    #print(ss)
+    return ss
+
+
+#-----------------nv() not with Vector <>---------------------------------
+def nv(s):
+    s=s.replace('<','')
+    s=s.replace('>','')
+    s=s.replace(' ','')
+    s=s.replace('Vector','')
+    return s
+
+#----------------show select Grab Vert [[id,()],..] -----------------------
+def getGrabVect(Show=True):  
+    md=bpy.context.object.mode
+    if md!='EDIT':bpy.ops.object.mode_set(mode='EDIT')
+    obj=bpy.context.edit_object;me=obj.data
+    bm=bmesh.from_edit_mesh(me);
+    V=bm.verts
+    s=""
+    for v in V:
+        if v.select:s=s+'['+str(v.index)+','+nv(str(v.co))+'],'
+
+    ss='['+s[:len(s)-1]+']'
+    if Show:
+        #print(ss)
+        return ss
+        #clip.copy(ss)
+    if md!='EDIT':bpy.ops.object.mode_set(mode=md)
+   
+    
+
+#----------------show select Grab Edge [[id,()],...]-----------------------
+def getGrabEdge(Show=True):  
+    md=bpy.context.object.mode
+    if md!='EDIT':bpy.ops.object.mode_set(mode='EDIT')
+    obj=bpy.context.edit_object;me=obj.data
+    bm=bmesh.from_edit_mesh(me);
+    E=bm.edges
+    s=""
+    for e in E:
+        if e.select:s=s+'['+str(e.index)+','+'('+str(e.verts[0].index)+','+str(e.verts[1].index)+')],'
+
+    ss='['+s[:len(s)-1]+']'
+    if Show:
+        #print(ss)
+        return ss
+    if md!='EDIT':bpy.ops.object.mode_set(mode=md)
+
+
+#----------------show select Grab Face [[id,()],...]-----------------------
+def getGrabFace(Show=True):  
+    md=bpy.context.object.mode
+    if md!='EDIT':bpy.ops.object.mode_set(mode='EDIT')
+    obj=bpy.context.edit_object;me=obj.data
+    bm=bmesh.from_edit_mesh(me);
+    F=bm.faces
+    s=""
+    for f in F:
+        if f.select:s=s+'['+str(f.index)+','+'('+str(f.verts[0].index)+','+str(f.verts[1].index)+','+str(f.verts[2].index)+','+str(f.verts[3].index)+')],'
+
+    ss='['+s[:len(s)-1]+']'
+    if Show:
+        #print(ss)
+        return ss
+    if md!='EDIT':bpy.ops.object.mode_set(mode=md)
+
+
+
+#------------------show select Grab  [Vert,Edge,Face]-------------------
+def getGrab():
+    v=getGrabVect(False)
+    e=getGrabEdge(False)
+    f=getGrabFace(False)
+    ss='['+str(v)+','+str(e)+','+str(f)+']'
+    #print(ss)
+    return ss
+
+#---------------getVertLocation-----(in Edit mode get Vert Location for rec() use)-------------
+def getVertLocation(vIndex=[]):
+    if vIndex==[]:return '';
+    else:return 'l'+str(vertCo(vIndex[0]))+';'
+
+def getVertL(v): return getVertLocation(v)
+
+#-----------------show cursor vector---------------------------------------
+def getCursor():
+    L=bpy.context.scene.cursor.location
+    ss=nv(str(L))
+    #print(ss)
+    return ss
+
+#------------------material diffuse color (return rgb tuple)--------------------------------------------
+def materialDiffuseColor():
+    c=bpy.context.object.active_material.diffuse_color
+    n=3  #<--round n
+    ss='('+ str(round(c[0],n)) +','+str(round(c[1],n))+','+str(round(c[2],n))+')'
+    #print(ss)
+    return ss
+#------------------get selected Object name list-----------------------------------------------
+def getSelectedOjbect():
+    obj=bpy.context.selected_objects
+    if obj==[]: return ''
+    else:
+        for o in obj:s=s+",'"+o.name+"'"
+        ss='['+s[1:]+']';
+        return ss;
+def getO():return getSelectedObject()    
+#-------------------Object(Camera) Location & Rotation (return )----------------------
+def getObjectLocationRotation(n=4):  #n is  round  for rotation
+    obj=bpy.context.object
+    r=obj.rotation_euler
+    ss=nv(str(obj.location))+',('+str(round(r.x,n))+','+str(round(r.y,n))+','+str(round(r.z,n)) +')'
+    #print(ss)
+    return ss
+#--------------------getObjLocation for object rec use-------------------------
+def getObjLocation(): 
+    obj=bpy.context.object
+    ss=nv(str(obj.location))
+    return ss
+
+def getObjL():return getObjLocation()
+#--------------------getClipboard-------------------------------------
+def getClipboard():
+    try:return bpy.data.window_managers[0].clipboard
+    except:return ''
+#---------------------Quick Short command for get---------------------
+    
+
+def getV(): return getSelect('V')  #---get Select Verts Index in list
+def getE(): return getSelect('E')  #---get Select Edgs Index in list
+def getF(): return getSelect('F')  #---get Select Faces Index in list
+
+
+def getLR():return objectLocationRotation() #--for camera use, Get Location & Rotation of Camera, as Parameters for function: ca(LR)
+
+
+def getDFC():return materialDiffuseColor()  #---2.79 use get DFC color
+def getRGB():return getDFC()
+
+def getG():return getGrab()  #----get whole Vert/Edge/Face Index and location in the list of object for makeObject() use 
+def getGV():return getGrabVect()  #--grab Vert Index List of object
+def getGE():return getGrabEdge()  #--grab Edge Index list of object
+def getGF():return getGrabFace()  #--grab Face Index list of object 
+
+
+#------------------getInfo---------------------------------------------
+def getInfo():
+    try:
+        bpy.ops.info.select_all(override('INFO'),action='SELECT')
+        bpy.ops.info.report_copy(override('INFO'))
+        return bpy.data.window_managers[0].clipboard
+    except: return ""
+    
+def getInfoLast():
+    try:
+        ls=getInfo().split('\n')
+        return ls[-2]
+    except:return ""
+
+def getInfoValue(a='transform.translate',a1='g'):  #from info get a Value(default:transform.translate value), to rec as a1 (defautl g)
+    g='';I=getInfoLast();n=I.find(a);
+    if n>0: i1=I.find('=(');i2=I.find(')');g=a1+I[i1+1:i2+1]+';'
+    return g
+
+def getInfoR(a='transform.rotate',r=2):    #from info get Roatate Value
+    v='';I=getInfoLast();n=I.find(a);
+    if n>0:
+        i1=I.find('=');i2=I.find(',');V=I[i1+1:i2];V=str(round(degrees(float(V)),r))
+        a1=I.find('axis')+6;a2=I.find("',");A=I[a1:a2].lower()
+        v='r'+A+'('+V+');'
+    return v
+
+
+def getSelectObj():  #----return 'sO()' 
+    ls=lsO();Obj=''
+    if len(ls)==0:Obj=''
+    if len(ls)==1:Obj="sO('"+ls[0]+"');"
+    else:Obj='sO('+str(ls)+');'
+    return Obj
+
+def getInfoObjAction(r,recObjName=''):# when object mode,from Info get Action for rec  
+    I=getInfoLast();s='';Obj=''
+
+    #------------rec Object Name--------------------------
+    if recObjName!='':Obj=getSelectObj()
+
+    #-------last Info is move then rec location ----------  
+    a='transform.translate';n=I.find(a);
+    if n>0:
+        N=len(bpy.context.selected_objects)
+        if N==0:return ''
+        if N==1 and isOmode()==False: l=getObjL();s=Obj+'l'+roundV(l,r)+';'; return s
+        else:g=getInfoValue();s=Obj+roundV(g,r);return s
+            
+    #-------last Info is resize---------------------------
+    a='transform.resize';n=I.find(a);
+    if n>0:s=getInfoValue(a,'s');s=Obj+roundV(s,r);return s
+
+    #-------last Info is rotate---------------------------
+    a='transform.rotate';n=I.find(a);
+    if n>0:s=Obj+getInfoR(a,r);return s
+
+
+    #--------if not any action then s=selectObj-----------
+    if s=='':s=getSelectObj()
+    
+    return s    
+
+
+
+def getInfoEditAction(r): # when edit mode,from Info get Action for rec
+    ls=lsV();s='';g='';l=''
+    I=getInfoLast();s='';
+    #-------last Info is move then rec location ----------
+
+    a='transform.translate';n=I.find(a);
+    if n>0:
+        
+        if len(ls)<=0:return s
+        if len(ls)==1 and isOmode()==False :l=getVertL(ls);l=roundV(l,r);s='v('+str(ls[0])+');'+l;
+        else:g=getInfoValue();g=roundV(g,r);s='v('+getV()+');'+g;
+        return s
+
+    #-------last Info is resize---------------------------
+    a='transform.resize';n=I.find(a);
+    if n>0:s=getInfoValue(a,'s');s='v('+getV()+');'+roundV(s,r);return s
+
+    #-------last Info is rotate---------------------------
+    a='transform.rotate';n=I.find(a);
+    if n>0:rr=getInfoR(a,r);s='v('+getV()+');'+rr;return s
+
+
+    #--------if not any action then return selected Verts-----------
+    if s=='':s='v('+getV()+');'
+    
+    
+    return s
+
+
+
+def getInfoAnyMode(r):  #any mode rec : for example proptional mode toggle
+    I=getInfoLast();s='';
+    #-----oMode change------------
+    n=-1
+    if I.find('bpy.context.scene.tool_settings')>=0:a='proportional_edit';n=I.find(a);
+    if n>0:
+        if I[n:].find('False')>=0:s='o(0);'
+        else:
+            Fall=bpy.context.scene.tool_settings.proportional_edit_falloff
+            Fall=IF(Fall=='SMOOTH','',",'"+Fall+"'")
+            Size=str(round(bpy.context.scene.tool_settings.proportional_size,r))
+            s='o('+Size+Fall+');'
+
+
+    #----Mode change---------------
+    a='editmode_toggle';n=I.find(a);
+    if n>0:
+        i=modeI();
+        if i!='':s='m' + str(i) +'();';return s
+        
+
+    
+    return s
+
+
+#==================record==============================================
+def record(r=2,n=''):  #---record into the Text Editor  #(r=2 is Vert location or translation keep digitRound), n='obj' or n='o':obj mode rec obj name  
+
+    a=contextArea('TEXT_EDITOR');t=a.spaces[0].text
+    
+    mI=modeI();s='';
+
+    s=getInfoAnyMode(r)  #-----any mode rec
+
+    if s=='':
+        if mI==0: 
+            s=getInfoObjAction(r,n)   #--object mode rec
+        else:      
+            s=getInfoEditAction(r)  #--edit mode rec
+        
+    t.write(s);
+
+    
+def rec(r=2,n=''):record(r,n)
+
+def reco(r=2,n='o'):record(r,n) # when object mode add selectObject
+
+#---------------add New Line--------------------------------------------
+def newLine(): # add new line
+    a=contextArea('TEXT_EDITOR');t=a.spaces[0].text;t.write('\n');
+    
+def _n():newLine()   #n()=_n();  if argmument blank, n()=_n();  if n('OBJ') = name('OBJ') 
+
 #===========Object Oprations============================================
 
 
@@ -737,10 +1319,27 @@ def clear(Type=''):
         
 def x(t=''):clear(t)
 
+#---------clearOtherOjbect (keep select object Only)-----------
+def clearOtherObject():
+    override = bpy.context.copy()
+    override['selected_objects'] = list(bpy.context.scene.objects)
+    bpy.ops.object.delete(override)
+
+
+def clearOther():clearOtherObject()
+
+#------------dissovleFaces-----------------------------------------
+def dissovleFaces():
+    bpy.ops.mesh.dissolve_faces()
+
+def faceDsvl():dissovleFaces()
+def fDsv():faceDsvl()
+def faceMelt():faceDsvl()
+def fMelt():faceMelt()
 
 
 #---------mesh rebuild after vertices re-ordered by x,z,y (in order to keep same in different bl versions)-------------------
-def meshVertSort(Round=4):  
+def meshVertSortAll(Round=4):  
     md0=mode("EDIT");obj=bpy.context.object;bm=bmesh.from_edit_mesh(obj.data);v0=[];vi=[];i=0;n=Round
 
     #---------Vert------------------------------
@@ -784,51 +1383,69 @@ def meshVertSort(Round=4):
     #----------------------------------------------
     if md0!='EDIT':mode(md0)
 
-def remesh(Round=4): meshVertSort(Round)
-def re(Round=4):remesh(Round)
+#--------------------------------------------------
+def reIndexAll(Round=4):meshVertSortAll(Round)
+
+
+
+#-----------reIndex meshSort ----------------------
+def reIndexBgnI(bgnV=0,bgnE=0,bgnF=0,Round=4):  #----has problem, not use for the time 
+    md0=mode("EDIT");obj=bpy.context.object;bm=bmesh.from_edit_mesh(obj.data);v0=[];vi=[];i=0;n=Round
+
+    #---------Vert------------------------------
+    for V in bm.verts[bgnV:]: v0.append([V.index,round(V.co.x,n),round(V.co.y,n),round(V.co.z,n)])
+    v0.sort(key = operator.itemgetter(1,3,2))
+    i=0;
+    for VV in v0:vi.append([VV[0],i]);i+=1
+    vi.sort()
+    i=0;
+    for V in bm.verts[bgnV:]:V.index=vi[i][1];i+=1
+    bm.verts.sort();
+
+    #---------Edge-------------------------------
+    ei=[]
+    for E in bm.edges[bgnE:]:
+        eVi=[];
+        for i in range(2):eVi.append(E.verts[i].index)
+        eVi.sort();eVi.append(E.index);ei.append(eVi)
+    ei.sort(key=operator.itemgetter(0,1))
+    i=0
+    for EI in ei: EI.append(i);i+=1;
+    ei.sort(key=operator.itemgetter(2))
+    i=0;
+    for E in bm.edges[bgnE:]:E.index=ei[i][3];i+=1
+    bm.edges.sort();
+
+    #---------Face-------------------------------
+    fi=[]
+    for F in bm.faces[bgnF:]:
+        fVi=[];
+        for FV in F.verts:fVi.append(FV.index);
+        fVi.sort();fVi.append(F.index);fi.append(fVi)
+    fi.sort(key=operator.itemgetter(0,1,2,3))
+    i=0
+    for FI in fi: FI.append(i);i+=1;
+    fi.sort(key=operator.itemgetter(4))
+    i=0;
+    for F in bm.faces[bgnF:]:F.index=fi[i][5];i+=1
+    bm.faces.sort();
+    
+    #----------------------------------------------
+    if md0!='EDIT':mode(md0)
+    
+    
+#----------------------------------------------------    
+def reIndex(Round=4):reIndexAll(Round)
+def reindex(Round=4):reIndexAll(Round)
+def ri(Round=4):reIndex(Round)
 
 
 #-----------------only new verts reindex------------
 def meshVertSortNew(Round=4):
-    msg(LastVertIndex)
+    pass
+    #msg(LastVertIndex)
     
 
-
-
-#--------------------xxxxxx---- (aybe not useful, Later can delete this codes)---xxxxxxx---------------------------------
-def meshReBuild_old_notUseful():#--------not use now (to write  ) Later can delete this codes
-    md0=mode("EDIT");obj=bpy.context.object;bm=bmesh.from_edit_mesh(obj.data); #@Name=obj.name
-    vi=[];v=[];e=[];f=[];v0=[];e0=[];f0=[];
-    for V in bm.verts: v0.append([V.index,V.co.x,V.co.y,V.co.z])
-    #for E in bm.edges: e0.append([E.verts[0].index,E.verts[1].index])
-    #for F in bm.faces: f0.append([F.verts[0].index,F.verts[1].index,F.verts[2].index,F.verts[3].index])
-    #--------sort----------
-    v0.sort(key = operator.itemgetter(1,2,3))
-    for VV in v0:vi.append(VV[0]);#v.append(VV[1:])
-    #for EE in e0:e.append(lsI(vi,EE))
-    #for FF in f0:f.append(lsI(vi,FF))
-
-    #--------update-------
-    i=0;
-    for V in bm.verts:V.index=vi[i];i+=1
-    bm.verts.sort()
-    #i=0;
-   # for E in bm.edges:E.verts[0].index=e[i][0];E.verts[1].index=e[i][1];i+=1
-    #i=0;
-   # for F in bm.faces:F.verts[0].index=f[i][0];F.verts[1].index=f[i][1];F.verts[2].index=f[i][2];F.verts[3].index=f[i][3];i+=1
-    #bmesh.update_edit_mesh(obj.data, True)
-    if md0!='EDIT':mode(md0)
-    
-def meshUpdate_not_useful(bm): #---- Later can delete this codes-----(aim to meshReBuild can self update no need to make new), but not useful, not finish yet.
-    #--------update-------
-    i=0;
-    for V in bm.verts:V.co.x=v[i][0];V.co.y=v[i][1];V.co.z=v[i][2];i+=1
-    i=0;
-    for E in bm.edges:E.verts[0].index=e[i][0];E.verts[1].index=e[i][1];i+=1
-    i=0;
-    for F in bm.faces:F.verts[0].index=f[i][0];F.verts[1].index=f[i][1];F.verts[2].index=f[i][2];F.verts[3].index=f[i][3];i+=1
-    bmesh.update_edit_mesh(obj.data, True)
-#----------------xxxxxxxxxxxxxxx--end--xxxxxxxxxxxxxxxxxxxxxx--------------------------------------------------------------------------
 
 
 #---------object move----------------------------------------------
@@ -913,35 +1530,84 @@ def gx(n):g((n,0,0))
 def gy(n):g((0,n,0))
 def gz(n):g((0,0,n))
 
+#---------gotoMid---------------------------------------------------------
+def gotoMid(Axis='x'):
+    if mode('name')!='EDIT':m1()
+    obj=bpy.context.edit_object;me=obj.data
+    bm=bmesh.from_edit_mesh(me)
+    S='''for v in bm.verts:
+        if v.select:
+            ls=[]
+            for e in v.link_edges:
+                for vv in e.verts:
+                    if vv==v:continue
+                    if vv.select:break
+                    ls.append(vv)
+            if len(ls)>1:
+                diff=abs(round(ls[0].co.Axis-ls[1].co.Axis,6))
+                if diff>0:
+                    if ls[0].co.Axis<ls[1].co.Axis:A=ls[0].co.Axis+diff/2
+                    else:A=ls[1].co.Axis+diff/2
+                    v.co.Axis=A
+     '''
+    S=S.replace('Axis',Axis);
+    exec(S);
+    
+    
+def gMid(a='x'):gotoMid(a)                
+
 #----------vert slide (shft_v)----------------------------------------
 def vertSlide(v=0.5):
-    u=ui()
-    bpy.ops.transform.vert_slide(value=v, mirror=True, correct_uv=True)
-    ui(u)
+    bpy.ops.transform.vert_slide(override(),value=v, mirror=True, correct_uv=True)
     
-def shft_v():vertSlide(v=0.5)
-def V():vertSlide(v=0.5)
+def shft_v(v=0.5):vertSlide(v)
+def shfV(v=0.5):vertSlide(v)
+#def V(v=0.5):vertSlide(v)
+
+
+#-----------------GoLocation(x,y,z)-------------------------------
+def GoLocation(x,y,z):
+    md=bpy.context.object.mode
+    if md=='OBJECT':
+        obj=bpy.context.object
+        obj.location=Vector((x,y,z))
+    else:
+        obj=bpy.context.edit_object;me=obj.data
+        bm=bmesh.from_edit_mesh(me)
+        ls=lsV()
+        for L in ls:
+            for v in bm.verts[L:L+1]:
+                v.co.x=x; v.co.y=y;v.co.z=z
+        bmesh.update_edit_mesh(me, True)     
 
 #-----------rotate----------------------------------------------------
 def rotate(Angle=90,Axis='X'):
     v=math.radians(Angle)
+
+    P_edit_falloff=bpy.context.scene.tool_settings.proportional_edit_falloff
+    P_edit_size=bpy.context.scene.tool_settings.proportional_size
 
     #----------Version Different------------------------
     if vs()<2.8:
         if Axis.upper()=='X':A=(1,0,0);Con_Axis=(True,False,False)
         if Axis.upper()=='Y':A=(0,1,0);Con_Axis=(False,True,False)
         if Axis.upper()=='Z':A=(0,0,1);Con_Axis=(False,False,True)
-        bpy.ops.transform.rotate(value=v, axis=A, constraint_axis=Con_Axis, constraint_orientation='GLOBAL', mirror=False, proportional='DISABLED', proportional_edit_falloff='SMOOTH', proportional_size=1)
+
+        P_edit=bpy.context.scene.tool_settings.proportional_edit
+        bpy.ops.transform.rotate(value=v, axis=A, constraint_axis=Con_Axis, constraint_orientation='GLOBAL', mirror=False, proportional=P_edit, proportional_edit_falloff= P_edit_falloff, proportional_size=P_edit_size)
     else:
         if vs()==2.92:v=-v
-        bpy.ops.transform.rotate(value=v, orient_axis=Axis.upper(), orient_type='GLOBAL', orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)), orient_matrix_type='GLOBAL', constraint_axis=(False, True, False), mirror=True, use_proportional_edit=False, proportional_edit_falloff='SMOOTH', proportional_size=1, use_proportional_connected=False, use_proportional_projected=False)
+            
+        P_edit=bpy.context.scene.tool_settings.use_proportional_edit    
+        bpy.ops.transform.rotate(value=v, orient_axis=Axis.upper(), orient_type='GLOBAL', orient_matrix=((1, 0, 0), (0, 1, 0), (0, 0, 1)), orient_matrix_type='GLOBAL', constraint_axis=(False, True, False), mirror=False, use_proportional_edit=P_edit, proportional_edit_falloff=P_edit_falloff, proportional_size=P_edit_size, use_proportional_connected=False, use_proportional_projected=False)
 
     #---------------------------------------------------
 
-def r(j=90,z='Y'):rotate(j,z)    
 def ry(j=90):rotate(j,'Y')
 def rz(j=90):rotate(j,'Z')
 def rx(j=90):rotate(j,'X')
+
+def r(x=0,y=0,z=0): rx(x);ry(y);rz(z)
 
 
 #-----------resize----------------------------------------------------
@@ -961,7 +1627,10 @@ def resize(x,y,z):
     #------------------------------------------------------------------
         
 
-def s(v): resize(v,v,v)
+def s(x,y='',z=''):
+    if y=='' and z=='':resize(x,x,x)
+    else:resize(x,y,z)
+
 def sx(v):resize(v,1,1)
 def sy(v):resize(1,v,1)
 def sz(v):resize(1,1,v)
@@ -977,20 +1646,30 @@ def F2(name=''):rename(name)
 def extrude(x=0,y=0,z=0):
     bpy.ops.mesh.extrude_region_move(TRANSFORM_OT_translate={"value":(x, y, z)})
 
-
 def e(x=0,y=0,z=0):extrude(x,y,z)
 def ex(x):extrude(x,0,0)
 def ey(y):extrude(0,y,0)
 def ez(z):extrude(0,0,z)
 
+#------------extrude_indiv-------------------------------------------
+def extrudeIndiv(v=0):
+   bpy.ops.mesh.extrude_faces_move(TRANSFORM_OT_shrink_fatten={"value":v})
 
+def eI(v=0):extrudeIndiv(v)
+def ei(v=0):eI(v)
 #-----------face add (fill)-------------------------------------------------
 def faceAdd():
+    m0();m1();
     bpy.ops.mesh.edge_face_add()
-
+    
 def fill():faceAdd()
 def f():faceAdd()
 
+
+#-----------subdive face to be half--------------------
+def subHalfFace(v=0):  #v=0 is horizontal subdive, v=1 is vertical subdive
+    subd(1);#fMelt();
+    
 #-----------duplicate------------------------------------------------
 def duplicate(Link=False):
     bpy.ops.object.duplicate_move(OBJECT_OT_duplicate={"linked":Link, "mode":'TRANSLATION'}, TRANSFORM_OT_translate={"value":(0,0,0)})
@@ -1044,22 +1723,87 @@ def bisect(Axis='X',Co=(0,0,0)):
 
     bpy.ops.mesh.bisect(plane_co=Co, plane_no=a, xstart=0, xend=0, ystart=0, yend=0)
 
-#--------------loopcut-----------------------------------------------
-def loopCut(Axis='X',Slide=0):
-    obj=bpy.context.object; Co=obj.location
-    if mode('name')=='EDIT':a()
-    else:m3()
-    bisect(Axis,Co)
-    if Slide!=0:
+
+#-------------loopCut(ctrR)----standard codes------------------------------------------------------------
+    
+def loopCut(Cuts=1,Slide=0):   # need select Edge first (use that edge to decide direction of loopCuting)
+    if mode('name')!='EDIT':m2()
+    ls=lsE();EdgeIndex=If(ls==[],0,ls[0]); #get first selected edge to decide how to loopCut,if not select use 0 as first index of edge
+    
+    #-----version different----------(>2.8 need add '"object_index":0,' befor 'edge_index' )---------
+    if vs()<2.8:bpy.ops.mesh.loopcut_slide(override(),MESH_OT_loopcut={"number_cuts":Cuts, "smoothness":0, "falloff":'INVERSE_SQUARE', "edge_index":EdgeIndex}, TRANSFORM_OT_edge_slide={"value":Slide})
+    else:bpy.ops.mesh.loopcut_slide(override(),MESH_OT_loopcut={"number_cuts":Cuts, "smoothness":0, "falloff":'INVERSE_SQUARE',"object_index":0,  "edge_index":EdgeIndex}, TRANSFORM_OT_edge_slide={"value":Slide})
+    #------------------------------------------------------------------------------------------------
+
+def ctrl_r(Cuts=1,Slide=0):loopCut(Cuts,Slide)
+def ctrR(Cuts=1,Slide=0):loopCut(Cuts,Slide)
+def cR(Cuts=1,Slide=0):ctrR(Cuts,Slide)
+def cr(Cuts=1,Slide=0):ctrR(Cuts,Slide)
+
+
+#--------------loopCut Old (use bisect instead of loopCut function)-----NO MORE USE----
+def loopCut_OLD(Axis='X',Co=0,LinkIndex='all'):  #use bisect as loop Cut
+    obj=bpy.context.object;
+    if mode('name')!='EDIT':m3()
+
+    if LinkIndex=='all':a()
+    else:l(LinkIndex);
+
+    if isTp(Co,'1','.'):
         ax=Axis
         if str(type(ax))=="<class 'str'>":ax=Axis.upper()
-        if ax=='X' or ax==0:gx(Slide)
-        if ax=='Y' or ax==1:gy(Slide)
-        if ax=='Z' or ax==2:gz(Slide)
+        if ax=='X' or ax==0:Co=(Co,0,0)
+        if ax=='Y' or ax==1:Co=(0,Co,0)
+        if ax=='Z' or ax==2:Co=(0,0,Co)
+
+    bisect(Axis,Co)
+        
+#def ctrl_r(a='X',c=0,l='all'):loopCut(a,c,l)
+#def ctrR(a='X',c=0,l='all'):ctrl_r(a,c,l)
 
 
-def ctrl_r(a='X',s=0):loopCut(a,s)
-def ctrR(a='X',s=0):ctrl_r(a,s)
+
+#-----------faceLoopSelect----------
+def faceLoopSelect1(FaceIndex,r=0):  
+    obj=bpy.context.object
+    bm=bmesh.from_edit_mesh(obj.data)
+    m2();
+    ls=[]
+    for f in bm.faces[FaceIndex:FaceIndex+1]:
+        f.select=True
+        for e in f.edges[r:r+1]:
+            sE(e.index);alt();
+            ls.extend(lsE());
+        for e in f.edges[r+2:r+3]:
+            sE(e.index);alt();
+            ls.extend(lsE());
+    sE(ls);sF_(lsV());
+    bmesh.update_edit_mesh(obj.data)
+
+def faceLoopSelect2(FaceIndex):
+    loopFaceSelect1(FaceIndex,0)
+
+    
+def faceLoopSelect(r=0):
+    ls=lsF();sN();
+    if len(ls)>0:
+        if len(ls)==1:
+            faceLoopSelect1(ls[0],r)
+        else:
+            faceLoopSelect2(ls)
+    
+
+def faceLoopMerge(): #----not usefull, has some wrong---
+    ls=lsF();n=int(len(ls)/4);
+    for i in range(0,n):
+        ii=n*4-i*3
+        sF([ls[i],ls[ii-1]]);faceMelt();
+        sF([ls[ii-2],ls[ii-3]]);faceMelt();
+        
+#----------loopFaceSubdive---------------------
+def faceLoopSubdive(r=0):
+    exec('faceLoopSelect('+str(r)+');subd(1)')
+
 
 #-------------------FaceCut-----------------------------------------
 def faceCut():
@@ -1070,21 +1814,32 @@ def edgeClear():
 
 #--------------knife cut--------------------------------------------
 def knifeCut():
-    bpy.ops.mesh.knife_tool(use_occlude_geometry=True, only_selected=False)
+    bpy.ops.mesh.knife_tool(override(),use_occlude_geometry=True, only_selected=False)
 
 def k():knifeCut()
 
 #---------------rip move-(not function yet, if run flash exit app)-------------------------------------------
-def ripMove():
-    u=ui('VIEW_3D')
-    if mode('name')!='EDIT':m1()
-    #----------------Version Different------------------------------
-    if vs()<2.8:bpy.ops.mesh.rip_move(MESH_OT_rip={"mirror":False, "proportional":'DISABLED', "proportional_edit_falloff":'SMOOTH', "proportional_size":1, "release_confirm":False, "use_accurate":False, "use_fill":False}, TRANSFORM_OT_translate={"value":(0, 0, 0), "constraint_axis":(False, False, False), "constraint_orientation":'GLOBAL', "mirror":False, "proportional":'DISABLED', "proportional_edit_falloff":'SMOOTH', "proportional_size":1, "snap":False, "snap_target":'CLOSEST', "snap_point":(0, 0, 0), "snap_align":False, "snap_normal":(0, 0, 0), "gpencil_strokes":False, "texture_space":False, "remove_on_cancel":False, "release_confirm":False, "use_accurate":False})
-    else:bpy.ops.mesh.rip_move(MESH_OT_rip={"mirror":False, "use_proportional_edit":False, "proportional_edit_falloff":'SMOOTH', "proportional_size":1, "use_proportional_connected":False, "use_proportional_projected":False, "release_confirm":False, "use_accurate":False, "use_fill":False}, TRANSFORM_OT_translate={"value":(-0.713697, -0.606782, 0.818662), "orient_type":'GLOBAL', "orient_matrix":((1, 0, 0), (0, 1, 0), (0, 0, 1)), "orient_matrix_type":'GLOBAL', "constraint_axis":(False, False, False), "mirror":False, "use_proportional_edit":False, "proportional_edit_falloff":'SMOOTH', "proportional_size":1, "use_proportional_connected":False, "use_proportional_projected":False, "snap":False, "snap_target":'CLOSEST', "snap_point":(0, 0, 0), "snap_align":False, "snap_normal":(0, 0, 0), "gpencil_strokes":False, "cursor_transform":False, "texture_space":False, "remove_on_cancel":False, "release_confirm":False, "use_accurate":False})
-    #---------------------------------------------------------------
-    ui(u)
+def ripMove(x=0,y=0,z=0):
     
-#def v():ripMove()
+    if mode('name')!='EDIT':m1()
+
+    win      = bpy.context.window
+    scr      = win.screen
+    areas3d  = [area for area in scr.areas if area.type == 'VIEW_3D']
+    region   = [region for region in areas3d[0].regions if region.type == 'WINDOW']
+    Override = {'window':win,
+                'screen':scr,
+                'area'  :areas3d[0],
+                'region':region[0],
+                'scene' :bpy.context.scene,
+                'selected_objects':bpy.context.object
+                }
+
+    #----------------Version Different------------------------------
+    if vs()<2.8:bpy.ops.mesh.rip_move(Override,MESH_OT_rip={"mirror":False, "proportional":'DISABLED', "proportional_edit_falloff":'SMOOTH', "proportional_size":1, "release_confirm":False, "use_accurate":False, "use_fill":False}, TRANSFORM_OT_translate={"value":(x,y,z), "constraint_axis":(False, False, False), "constraint_orientation":'GLOBAL', "mirror":False, "proportional":'DISABLED', "proportional_edit_falloff":'SMOOTH', "proportional_size":1, "snap":False, "snap_target":'CLOSEST', "snap_point":(0, 0, 0), "snap_align":False, "snap_normal":(0, 0, 0), "gpencil_strokes":False, "texture_space":False, "remove_on_cancel":False, "release_confirm":False, "use_accurate":False})
+    else:bpy.ops.mesh.rip_move(Override,MESH_OT_rip={"mirror":False, "use_proportional_edit":False, "proportional_edit_falloff":'SMOOTH', "proportional_size":1, "use_proportional_connected":False, "use_proportional_projected":False, "release_confirm":False, "use_accurate":False, "use_fill":False}, TRANSFORM_OT_translate={"value":(x, y, z), "orient_type":'GLOBAL', "orient_matrix":((1, 0, 0), (0, 1, 0), (0, 0, 1)), "orient_matrix_type":'GLOBAL', "constraint_axis":(False, False, False), "mirror":False, "use_proportional_edit":False, "proportional_edit_falloff":'SMOOTH', "proportional_size":1, "use_proportional_connected":False, "use_proportional_projected":False, "snap":False, "snap_target":'CLOSEST', "snap_point":(0, 0, 0), "snap_align":False, "snap_normal":(0, 0, 0), "gpencil_strokes":False, "cursor_transform":False, "texture_space":False, "remove_on_cancel":False, "release_confirm":False, "use_accurate":False})
+
+#def v(x=0,y=0,z=0):ripMove(x,y,z)
 
 #--------------inset------------------------------------------------
 def inset(Thick=0,Depth=0):
@@ -1101,6 +1856,9 @@ def y():split()
 
 #---------------part(split to an independent obj)-----------------------------------------------
 def p():
+    bpy.ops.mesh.separate(type='SELECTED')
+
+def p_OLD():#-----Before use myself write, not good than standard ops codes above-----------
     if mode('name')!='EDIT':m3();
     md='FACE';md=modeIndexName(modeI())
     obj=bpy.context.edit_object
@@ -1345,7 +2103,7 @@ def newCollection(Name='Collection'):
     m(Name)
 
 
-#-----------------shft_s---------------------------------------------------
+#-----------------shft_s-------(copy)--------------------------------------------
 def shft_s(i=1):
     if i==1:cs0()
     if i==2:bpy.ops.view3d.snap_cursor_to_selected()
@@ -1357,6 +2115,7 @@ def shft_s(i=1):
     if i==8:bSpy.ops.view3d.snap_selected_to_cursor(use_offset=False)
     if i==9:bpy.ops.view3d.snap_selected_to_active()
 
+def shfS(i):shft_s(i)
 def S(i):shft_s(i)  
 
     
@@ -1373,12 +2132,15 @@ def pl(Size=2):plane(Size)
 
 def cubeCreate():
     bpy.ops.mesh.primitive_cube_add(enter_editmode=False, location=(0, 0, 0))
+    reIndex()
     
 def cube(v=0):
     cubeCreate();
     if v>0:subSurf(v);smooth()
 
+def Cube(v=0):cube(v=0)
 def cu(v=0):cube(v=0)
+
 
 def circle(Radius=1):
     bpy.ops.mesh.primitive_circle_add(radius=Radius, enter_editmode=False, location=(0, 0, 0))
@@ -1409,7 +2171,10 @@ def grid(Size=2):
     bpy.ops.mesh.primitive_grid_add(size=Size, enter_editmode=False, location=(0, 0, 0))
 
 def monkey(Size=2):
-    bpy.ops.mesh.primitive_monkey_add(size=Size, enter_editmode=False, location=(0, 0, 0))
+    #----------Version Different-------------------
+    if vs()<2.8:bpy.ops.mesh.primitive_monkey_add(radius=Size,location=(0, 0, 0))
+    else:bpy.ops.mesh.primitive_monkey_add(size=Size,location=(0, 0, 0))
+    #reIndex()
 
 def text(Text='Text'):
     txt_data = bpy.data.curves.new(name=Text, type='FONT')
@@ -1506,12 +2271,12 @@ def hCube(a='X'):halfCube(a)
 def mirrorCube(Axis='X'):
     if isTp(Axis,'s'):
         zh=Axis.upper()
-        halfCube(zh);remesh()
+        halfCube(zh);reIndex()
         mirror(Axis,True)
 
     if isTp(Axis,'1'):
         cube(Axis);ap();clearX('-',-0.01);
-        remesh()
+        reIndex()
         mirror('X',True)
 
         
@@ -1520,9 +2285,10 @@ def mCube(a='X'):mirrorCube(a)
 def mCu(a='X'):mirrorCube(a)
 
 #---------------backWall---------------------------------------
+
 def wall(Type='wallOnly',Name='wall'):
     plane();rx(90);gy(10);s(30);sx(5);n(Name)
-    if Type.upper()=='withGround':gz(30);m2();sN();selE([1]);ey(-50);selE([1]);ctrB(0.2,10);sm();
+    if Type in ('withGround','g'):gz(30);m2();sN();selE([1]);ey(-50);selE([1]);ctrB(0.2,10);sm();
 
 
 
@@ -1533,9 +2299,10 @@ def parentSet(Type='ARMATURE_AUTO'):
 def ctrl_p(Type='ARMATURE_AUTO'):parentSet(Type)
 def ctrP(Type='ARMATURE_AUTO'):parentSet(Type)
 
-#===================Plug Function================================
-#----------getClipBoard (need import ctypes)---------------------
-def getClipBoard():
+
+#==========mybpy self as plug===(Maybe Future,mybpy will as plug privide drop file function as mybpy maya surport, No use for the timebeing)==================
+#----------getClipBoard (need import ctypes)--can be insteaded by:  bpy.data.window_managers[0].clipboard----------------
+def getClipBoard_OLD_NO_USE():
     CF_TEXT = 1;
     kernel32 = ctypes.windll.kernel32
     user32 = ctypes.windll.user32
@@ -1551,7 +2318,7 @@ def getClipBoard():
     user32.CloseClipboard()
 
 
-#-----------------File Drop Operator----------------------------------------
+#-----------------File Drop Operator-----(Not complete, for the future, no use now)-----------------------------------
 class fileDrop(bpy.types.Operator):
     """ This operator shows the mouse location,
         this string is used for the tooltip and API docs
@@ -1612,6 +2379,13 @@ def loopToolCircle():
 def lpCircle():loopToolCircle()
 def lpC():loopToolCircle()
 
+#----------------looptool  Relax----------------------------------
+def loopToolRelax():
+    try:bpy.ops.mesh.looptools_relax(input='selected', interpolation='cubic', iterations='1', regular=True)
+    except:pass#print('no looptool plug_on')
+
+
+def lpRelax():loopToolRelax()
 #-----------Create Model by Name------------------------------
 def shft_a(Name):pass  #not do yet
 def A():shft_a(Name)
@@ -1671,9 +2445,10 @@ def uvN():uvSelectNothing()
 #---------uv grab (go) --------------------------------------------------
 def uvGrab(x='',y='',div=100):  #m=mode type  ;div=100 percent
     mO=False
-    if mode('name')!='EDIT':mO=True;m3();
+    if mode('name')!='EDIT':mO=True;m3();a();
     if tp(x)=="(" or tp(x)=="[":y=x[1];x=x[0];
-    #uvN();uvA();
+    #uvN();uvA();               
+
     obj = bpy.context.active_object;me = obj.data
     bm = bmesh.from_edit_mesh(me)
 
@@ -1683,13 +2458,16 @@ def uvGrab(x='',y='',div=100):  #m=mode type  ;div=100 percent
   #--------------------------------------------
     # adjust UVs
     for f in bm.faces:
-        for l in f.loops:
-            luv = l[uv_layer]
-            #if luv.select:
-                #luv.uv = l.vert.co.xy # apply the location of the vertex as a UV
-            if f.select:
+        if f.select:
+            for l in f.loops:
+                luv = l[uv_layer]
                 luv.uv=(x/div,y/div) # apply the location as x,y
+            
+                #if luv.select:
+                    #luv.uv = l.vert.co.xy # apply the location of the vertex as a UV
+        
                 
+          
     bmesh.update_edit_mesh(me)
     if mO:m0()
     
@@ -1866,6 +2644,40 @@ def dfc(rgb):materialDiffuseColor(rgb)
 def mtColor(rgb):materialDiffuseColor(rgb)
 
 
+#------------------------------------------
+def isExistNode(Name,mt):
+    for n in mt.node_tree.nodes:
+        if n.name==Name:return True
+    return False
+
+def iNodeBSDF(mt):
+    #------------version different-----------------------
+    if vs()<2.8:N='ShaderNodeMaterial'
+    else:N='ShaderNodeBsdfPrincipled'
+    #----------------------------------------------------
+    i=-1;
+    for n in mt.node_tree.nodes:
+        i=i+1       
+        if n.rna_type.identifier==N:return i
+    return i 
+
+def iNodeOut(mt):
+    #------------version different-----------------------
+    if vs()<2.8:N='ShaderNodeOutput'
+    else:N='ShaderNodeOutPutMaterial'
+    #----------------------------------------------------
+    i=-1;
+    for n in mt.node_tree.nodes:
+        i=i+1
+        if n.rna_type.identifier==N:return i
+    return i 
+
+def iNodeType(NodeType,mt):
+    i=-1;
+    for n in mt.node_tree.nodes:
+        i=+i
+        if n.rna_type.identifier==NodeType:return i
+    return i 
 
 #-----------------Color Card (cc) Material & Texture  ---------------
 def colorCardTexture():
@@ -1879,28 +2691,22 @@ def colorCardTexture():
 def ccTx():colorCardTexture()
 
 def ccMake():
-    bpy.ops.material.new();n=len(bpy.data.materials)-1; mt=bpy.data.materials[n];mt.name="cc";ccTx()
-    
-    #-----------Version Different-----------------------------------------------------------------------
-    if vs()<2.8:mt.texture_slots.add();mt.texture_slots[0].texture=bpy.data.textures['cc'];mt.use_textures[0] = True
-    #---------------------------------------------------------------------------------------------------
+    if mtExist('cc')==False:
+        bpy.ops.material.new();n=len(bpy.data.materials)-1; mt=bpy.data.materials[n];mt.name="cc";ccTx()    
+        #-----------Version Different-----------------------------------------------------------------------
+        if vs()<2.8:mt.texture_slots.add();mt.texture_slots[0].texture=bpy.data.textures['cc'];mt.use_textures[0] = True
+        else:
+            mt.node_tree.nodes.new(type="ShaderNodeTexImage");n=mt.node_tree.nodes;i=len(n)-1;n[i].image=bpy.data.images['cc.png']
+            I=n[iNodeBSDF(mt)].inputs[0];O=n[i].outputs[0]; mt.node_tree.links.new(I,O);n[i].location.x=-300
+        #---------------------------------------------------------------------------------------------------
 
-
+   
 def materialColorCard(x='',y=''): 
     if mtExist('cc')==False:ccMake()
     mtAsgnObj('cc')
-    #-----------Version Different-----------------------------------------------------------------------
-    if vs()>=2.8: #use_nodes
-        obj=bpy.context.object;i=len(obj.material_slots)-1;mt=obj.material_slots[i].material;mt=bpy.data.materials['cc']
-        mt.use_nodes=True;mt.node_tree.nodes.new(type="ShaderNodeTexImage");n=mt.node_tree.nodes;i=len(n)-1;[i];n[i].image=bpy.data.images['cc.png']
-        I=n[0].inputs[0];O=n[2].outputs[0]; mt.node_tree.links.new(I,O);
-    #----------------------------------------------------------------------------------------------------
     if isNum(x) and isNum(y):u(x,y)
     
 def cc(x='',y=50):materialColorCard(x,y)
-
-
-
 
 
 
@@ -2043,6 +2849,13 @@ def render():
         try:a=areaFind('IMAGE_EDITOR');a.spaces[0].image=bpy.data.images['Render Result']
         except:pass
     #-----------------------------------------
+
+#------------renderSameView--(keep Render same View visible perporties)--------------------
+def renderSameView():   #plant to do , need to complete, 'kkk
+    sc=bpy.context.scene;
+    
+    
+        
     
 #==================Camera=====================================
 def lockCameraToView():  #---not function yet
@@ -2064,9 +2877,30 @@ def camera(l=(-7,-3,3),r=(1.3,0,-1.18)):  # n=name,l=location, r=rotation  (-5.8
     #lockCameraToView()
 
 def ca(l=(-5.8490,-11.9373,1.2016),r=(1.426,-0.0,-0.473)):
-    camera(l,r);sun();light();
-    if vs()<2.8:render()
+    try:
+        if mode('name')!='OBJECT':m0()
+        sun();light();camera(l,r);
+        if vs()<2.8:render()
+    except:pass
 
+
+#-------------------ca0---(ctr + alt +0)-------------------------------------
+      
+def cameraSameView(): # add the camera same View default camera  (not use, location and rotation not same)
+    a=contextArea()
+    l=v2t(a.spaces[0].region_3d.view_location)
+    r=r2t(a.spaces[0].region_3d.view_rotation)
+    #msg(a.spaces[0].region_3d.view_zoom)
+    camera(l,r);
+
+
+def ca0(): #ctr+alt+0  and add sun light
+    try:
+        if mode('name')!='OBJECT':m0()
+        sun();light();cameraSameView();
+        if vs()<2.8:render()
+    except:pass
+    
 
 #=================Light=======================================
 def light(l=(-5.16631, -4.22163, 3.151),e=1,t='HEMI',r=1): #e=Energy, t=Type,r=radius
@@ -2164,7 +2998,7 @@ def clearAll():
         #if bpy.context.object.mode!='OBJECT':mode('OBJECT')
         #bpy.ops.object.select_all(action='SELECT');
         #bpy.ops.object.delete(use_global=False)
-        objClear();mtClear();txClear();imgClear();wldClear()
+        objClear();mtClear();txClear();imgClear();wldClear();cIni();
     except:pass
 
 def clearALL():clearAll()
@@ -2240,6 +3074,7 @@ def eachSelectV(SQL=''):
 
 def eachSV(SQL=''):eachSelectV(SQL)
 def eachsv(SQL=''):eachSelectV(SQL)
+
 
 
 
@@ -2449,8 +3284,28 @@ def mayabl(b='obj'):mayaDropBlend(b)
 
 
 #=============Chinese Defination==============================================
-#=============常用特色中文命令定义(也可看出对应英文快捷命s令,可直接控制台输入对应英文命令,中文则需要写外面文本编辑器粘进Blender)===========================
+#=============常用特色中文命令定义(也可看出对应英文快捷命令,可直接控制台输入对应英文命令,中文则需要写外面文本编辑器粘进Blender)===========================
 
+
+#----下面是粘在自己脚本前面加载mybpy的两行标准代码(其中第一行代码中的mybpy路径可修改为自己工程使用的单独保存的mybpy文件夹路径)------
+#----也可粘入Blender的py控制台,使py控制台支持mybpy命令, 特别是执行录码命令 rec() ---------------------------------------------
+
+'''
+import sys;sys.path.append(r'd:\mybpy')
+import importlib as imp;import m;imp.reload(m);from m import *
+
+
+'''
+#-----------录代码命令------------
+
+def 录码(): rec()          #若带参数: rec(小数点保留位数).在控制台入输入rec()命令后, 支持录码的命令会在文本编辑器当前鼠标位置出现代码 (请特别注意鼠标选择位置,避免混乱及不小心的替换,出问题,马上按Ctr+Z撤销)
+                           #连续录码:鼠标在Py控制台时,按键盘上箭头(调出上一步命令),再按Enter执行 (还可以自设更便捷的快捷键:将控制台shift+鼠标点左键按下Press设为console.history_cycle,shift+鼠标左击释放设为执行console.execute) 
+                                                
+def 录码执行(): rec();run();   #录码后马上执行脚本, run()相当于按 alt+P 马上执行脚本
+
+def 录码折行执行(): rec();n();run();  #录码后会加折行符\n,n()命令相当于在文本编辑器里按回车折行, 然后马上执行
+
+def 录码带物体名(): reco()    # =rec(2,'o') 传参的写法，选择模式下录的代码会带sO(物体名称）,其中sO是selectObject函数简写
 
 #-----------贴图------------------
 
@@ -2501,8 +3356,6 @@ def 线编辑模式():m2()
 def 面编辑模式():m3()
 
 
-
-
 #----------Maya功能优化-----------------
             
 def 使maya支持拖拽贴图():mayaDropImg()
@@ -2515,35 +3368,19 @@ def 使maya支持拖拽blender文件(传递文件格式='obj'):mayaDropBlend(传
 def 清除maya拖拽blender文件功能():mayaDropBlend(0)
 
 
-#=============以下区域可自定义(可自己用def语句类似上面的设定 )====================================================
 
 
 
+#*************如有问题欢迎进交流 QQ群: mybpy (519692851) *************************************
+
+#*************百度Blender贴吧搜mybpy有详细说明, 主贴地址: https://tieba.baidu.com/p/7393914011
+
+#*************最新版百度下载地址:https://pan.baidu.com/s/1FtOLcsuh-rwxpmSrrVmc_w  提取码:mbpy
+
+#*************含历史版本下载地址:https://pan.baidu.com/s/1lWWFsxZ4_7tTxTuYmi2z2A  提取码:mbpy
+
+#************* Github Download address: https://github.com/cn2000bd/mybpy  ******************* 
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#========以下区域可自定义(可自己用def语句类似上面的设定或另外自设py文件引用mybpy)=============                                
